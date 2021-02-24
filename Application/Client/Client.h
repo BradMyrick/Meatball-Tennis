@@ -4,6 +4,7 @@
 class Client
 {
 private:
+	short sequence;
 	int player;
 	SOCKET clSocket;
 	volatile bool active;//controls the activity of the clients run which is on its own thread.
