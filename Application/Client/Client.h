@@ -8,6 +8,7 @@ private:
 	int player;
 	SOCKET clSocket;
 	volatile bool active;//controls the activity of the clients run which is on its own thread.
+	static int snapCount;
 
 	GameState state;
 	CriticalSection cs;//just incase you need to protect data, you might not need to.

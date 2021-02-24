@@ -4,6 +4,7 @@
 #include <WS2tcpip.h>
 
 // Initializes the client; connects to the server.
+int Client::snapCount = 0;
 int Client::init(char* address, uint16_t port, uint8_t _player)
 {
 	if (inet_addr(address) == INADDR_NONE)
@@ -19,6 +20,7 @@ int Client::init(char* address, uint16_t port, uint8_t _player)
 	clSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (clSocket == INVALID_SOCKET)
 		return SETUP_ERROR;
+
 	sockaddr_in saddr;
 	saddr.sin_family = AF_INET;
 	saddr.sin_port = htons(port);
@@ -40,16 +42,53 @@ int Client::init(char* address, uint16_t port, uint8_t _player)
 	recvNetMessage(clSocket, rmsg);
 	sequence = rmsg.readShort();
 	//       5) Make sure to mark the client as running.
-	return SUCCESS;
+	if (rmsg.readByte() == SV_OKAY) {
+		state.gamePhase = RUNNING;
+		active = true;
+		return SUCCESS;
+	}
+	
+	return SHUTDOWN;
 }
 
 // Receive and process messages from the server.
 int Client::run()
 {
-	// TODO: Continuously process messages from the server aslong as the client running.
-	// HINT: Set game phase to DISCONNECTED on SV_CL_CLOSE! (Try calling stop().)
-	// HINT: You can keep track of the number of snapshots with a static variable...
-	return DISCONNECT;
+	snapCount = 0;
+
+	while (active) {
+		NetworkMessage msg(IO::_INPUT);
+		int result = recvNetMessage(clSocket, msg);
+		short tmpSeq = msg.readShort();
+		if (tmpSeq > sequence) {
+			sequence = tmpSeq;
+			if (result > 0) {
+				snapCount++;
+
+				if (snapCount % 10 == 0)
+					sendAlive();
+
+				switch (msg.readByte()) {
+				case SV_SNAPSHOT:
+					state.gamePhase = msg.readByte();	//	Phase
+					state.ballX = msg.readShort();	//	BallX
+					state.ballY = msg.readShort();	//	BallY
+					state.player0.y = msg.readShort();	//	P0 - Y
+					state.player0.score = msg.readShort();	//	P0 - Score
+					state.player1.y = msg.readShort();	//	P1 - Y
+					state.player1.score = msg.readShort();	//	P1 - Score
+					break;
+
+				case SV_CL_CLOSE:
+					state.gamePhase = DISCONNECTED;
+					return SHUTDOWN;
+				}
+			}
+			else
+				return MESSAGE_ERROR;
+		}
+	}
+	return true;
 }
 
 // Clean up and shut down the client.
@@ -57,8 +96,11 @@ void Client::stop()
 {
 	// TODO:
 	//       1) Make sure to send a SV_CL_CLOSE message.
+	sendClose();
 	//       2) Make sure to mark the client as shutting down and close socket.
+	active = false;
 	//       3) Set the game phase to DISCONNECTED.
+	state.gamePhase = DISCONNECTED;
 }
 
 // Send the player's input to the server.
@@ -84,7 +126,11 @@ int Client::sendInput(int8_t keyUp, int8_t keyDown, int8_t keyQuit)
 	cs.leave();
 
 	//TODO:	Transmit the player's input status.
-
+	NetworkMessage msg(IO::_OUTPUT);
+	msg.writeByte(CL_KEYS);
+	msg.writeByte(keyUp);
+	msg.writeByte(keyDown);
+	sendNetMessage(clSocket, msg);
 	return SUCCESS;
 }
 
@@ -92,6 +138,11 @@ int Client::sendInput(int8_t keyUp, int8_t keyDown, int8_t keyQuit)
 void Client::getState(GameState* target)
 {
 	// TODO: Copy state into target.
+	target->ballX = state.ballX;
+	target->ballY = state.ballY;
+	target->gamePhase = state.gamePhase;
+	target->player0 = state.player0;
+	target->player1 = state.player1;
 
 }
 
@@ -99,13 +150,16 @@ void Client::getState(GameState* target)
 void Client::sendClose()
 {
 	// TODO: Send a CL_CLOSE message to the server.
-
+	NetworkMessage msg(IO::_OUTPUT);
+	msg.writeByte(SV_CL_CLOSE);
+	sendNetMessage(clSocket, msg);
 }
 
 // Sends a CL_ALIVE message to the server (private, suggested)
 int Client::sendAlive()
 {
 	// TODO: Send a CL_ALIVE message to the server.
-
-	return SUCCESS;
+	NetworkMessage msg(IO::_OUTPUT);
+	msg.writeByte(CL_ALIVE);
+	return sendNetMessage(clSocket, msg);
 }
