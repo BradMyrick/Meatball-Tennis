@@ -50,42 +50,96 @@ int Client::init(char* address, uint16_t port, uint8_t _player)
 }
 
 // Receive and process messages from the server.
+//int Client::run()
+//{
+//	snapCount = 0;
+//	NetworkMessage msg(IO::_INPUT);
+//	while (active) {
+//		int result = recvNetMessage(clSocket, msg);
+//		short tmpSeq = msg.readShort();
+//		if (tmpSeq > sequence) {
+//			sequence = tmpSeq;
+//			if (result > 0) {
+//				snapCount++;
+//
+//				if (snapCount >= 10)
+//					sendAlive();
+//
+//				switch (msg.readByte()) {
+//				case SV_SNAPSHOT:
+//					state.gamePhase = msg.readByte();	//	Phase
+//					state.ballX = msg.readShort();	//	BallX
+//					state.ballY = msg.readShort();	//	BallY
+//					state.player0.y = msg.readShort();	//	P0 - Y
+//					state.player0.score = msg.readShort();	//	P0 - Score
+//					state.player1.y = msg.readShort();	//	P1 - Y
+//					state.player1.score = msg.readShort();	//	P1 - Score
+//					break;
+//
+//				case SV_CL_CLOSE:
+//					return SHUTDOWN;
+//				}
+//			}
+//			else
+//				return MESSAGE_ERROR;
+//		}
+//	}
+//	return true;
+//}
+
 int Client::run()
 {
 	snapCount = 0;
-
-	while (active) {
-		NetworkMessage msg(IO::_INPUT);
-		int result = recvNetMessage(clSocket, msg);
-		short tmpSeq = msg.readShort();
-		if (tmpSeq > sequence) {
-			sequence = tmpSeq;
-			if (result > 0) {
+	NetworkMessage msgIN(_INPUT);
+	while (state.gamePhase == RUNNING)
+	{
+		int recvError = recvNetMessage(clSocket, msgIN);
+		if (recvError == SOCKET_ERROR)
+		{
+			return CONNECT_ERROR;
+		}
+		uint16_t RecvseqNum = msgIN.readShort();
+		if (sequence < RecvseqNum)
+		{
+			sequence = RecvseqNum;
+			uint8_t tag = msgIN.readByte();
+			if (tag == SV_CL_CLOSE)
+			{
+				stop();
+			}
+			else if (tag == SV_SNAPSHOT)
+			{
+				state.gamePhase = msgIN.readByte();
+				state.ballX = msgIN.readShort();
+				state.ballY = msgIN.readShort();
+				state.player0.y = msgIN.readShort();
+				state.player0.score = msgIN.readShort();
+				state.player1.y = msgIN.readShort();
+				state.player1.score = msgIN.readShort();
 				snapCount++;
+				if (snapCount >= 10)
+				{
+					NetworkMessage tmpOUT(_OUTPUT);
+					tmpOUT.writeByte(CL_ALIVE);
+					int sendResults = sendNetMessage(clSocket, tmpOUT);
+					snapCount = 0;
+				}
+				if (state.gamePhase == GAMEOVER)
+				{
+					int num = 0;
+					num = num + 1;
 
-				if (snapCount % 10 == 0)
-					sendAlive();
-
-				switch (msg.readByte()) {
-				case SV_SNAPSHOT:
-					state.gamePhase = msg.readByte();	//	Phase
-					state.ballX = msg.readShort();	//	BallX
-					state.ballY = msg.readShort();	//	BallY
-					state.player0.y = msg.readShort();	//	P0 - Y
-					state.player0.score = msg.readShort();	//	P0 - Score
-					state.player1.y = msg.readShort();	//	P1 - Y
-					state.player1.score = msg.readShort();	//	P1 - Score
-					break;
-
-				case SV_CL_CLOSE:
-					return SHUTDOWN;
 				}
 			}
-			else
-				return MESSAGE_ERROR;
 		}
 	}
-	return true;
+	while (true)
+	{
+		if (GetAsyncKeyState(VK_ESCAPE))
+			stop();
+			break;
+	}
+	return DISCONNECT;
 }
 
 // Clean up and shut down the client.
