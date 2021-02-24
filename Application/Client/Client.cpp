@@ -1,7 +1,6 @@
 // Client.cpp : handles all client network functions.
 #include "Client.h"
 #include "../NetworkMessage.h"
-#include <stdlib.h>
 #include <WS2tcpip.h>
 
 // Initializes the client; connects to the server.
@@ -50,43 +49,6 @@ int Client::init(char* address, uint16_t port, uint8_t _player)
 }
 
 // Receive and process messages from the server.
-//int Client::run()
-//{
-//	snapCount = 0;
-//	NetworkMessage msg(IO::_INPUT);
-//	while (active) {
-//		int result = recvNetMessage(clSocket, msg);
-//		short tmpSeq = msg.readShort();
-//		if (tmpSeq > sequence) {
-//			sequence = tmpSeq;
-//			if (result > 0) {
-//				snapCount++;
-//
-//				if (snapCount >= 10)
-//					sendAlive();
-//
-//				switch (msg.readByte()) {
-//				case SV_SNAPSHOT:
-//					state.gamePhase = msg.readByte();	//	Phase
-//					state.ballX = msg.readShort();	//	BallX
-//					state.ballY = msg.readShort();	//	BallY
-//					state.player0.y = msg.readShort();	//	P0 - Y
-//					state.player0.score = msg.readShort();	//	P0 - Score
-//					state.player1.y = msg.readShort();	//	P1 - Y
-//					state.player1.score = msg.readShort();	//	P1 - Score
-//					break;
-//
-//				case SV_CL_CLOSE:
-//					return SHUTDOWN;
-//				}
-//			}
-//			else
-//				return MESSAGE_ERROR;
-//		}
-//	}
-//	return true;
-//}
-
 int Client::run()
 {
 	snapCount = 0;
