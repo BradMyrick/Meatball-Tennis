@@ -1,6 +1,7 @@
 // Client.cpp : handles all client network functions.
 #include "Client.h"
 #include "../NetworkMessage.h"
+#include <stdlib.h>
 #include <WS2tcpip.h>
 
 // Initializes the client; connects to the server.
@@ -10,8 +11,8 @@ int Client::init(char* address, uint16_t port, uint8_t _player)
 	if (inet_addr(address) == INADDR_NONE)
 		return ADDRESS_ERROR;
 
-	state.player0.keyUp = state.player0.keyDown = true;
-	state.player1.keyUp = state.player1.keyDown = true;
+	state.player0.keyUp = state.player0.keyDown = false;
+	state.player1.keyUp = state.player1.keyDown = false;
 	state.gamePhase = WAITING;
 	// TODO:
 	//       1) Set the player.
@@ -31,8 +32,6 @@ int Client::init(char* address, uint16_t port, uint8_t _player)
 		return DISCONNECT;
 
 	NetworkMessage msg(IO::_OUTPUT);
-	msg.writeByte(1); //padding
-	msg.writeByte(1); //get rid of this extra padding later
 	msg.writeByte(CL_CONNECT);
 	msg.writeByte(player);
 	sendNetMessage(clSocket, msg);
@@ -47,8 +46,7 @@ int Client::init(char* address, uint16_t port, uint8_t _player)
 		active = true;
 		return SUCCESS;
 	}
-	
-	return SHUTDOWN;
+	else return SHUTDOWN;
 }
 
 // Receive and process messages from the server.
@@ -80,7 +78,6 @@ int Client::run()
 					break;
 
 				case SV_CL_CLOSE:
-					state.gamePhase = DISCONNECTED;
 					return SHUTDOWN;
 				}
 			}
@@ -99,6 +96,7 @@ void Client::stop()
 	sendClose();
 	//       2) Make sure to mark the client as shutting down and close socket.
 	active = false;
+	closesocket(clSocket);
 	//       3) Set the game phase to DISCONNECTED.
 	state.gamePhase = DISCONNECTED;
 }
@@ -108,7 +106,6 @@ int Client::sendInput(int8_t keyUp, int8_t keyDown, int8_t keyQuit)
 {
 	if (keyQuit)
 	{
-		stop();
 		return SHUTDOWN;
 	}
 
