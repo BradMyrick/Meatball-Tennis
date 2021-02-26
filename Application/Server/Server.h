@@ -13,6 +13,9 @@ private:
 	int noOfPlayers;
 	int playerTimer[2];
 
+	short sequence0;
+	short sequence1;
+
 	int storedBallVecX, storedBallVecY;
 	int ballVecX, ballVecY;
 	GameState state;
