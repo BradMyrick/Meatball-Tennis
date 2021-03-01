@@ -62,7 +62,8 @@ namespace MeatballTennis
         private void GameTimer_Tick(object sender, EventArgs e)
         {
             if (IsServer) serverTick();
-            clientTick();
+
+            clientTick(); //this is causing a shutdown because the client isn't running
             this.Invalidate();
         }
 

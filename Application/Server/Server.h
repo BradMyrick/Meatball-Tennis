@@ -1,8 +1,6 @@
 #include "../platform.h"
 #include "../definitions.h"
 #include "../NetworkMessage.h"
-
-// This class is exported from the Server.dll
 class Server
 {
 private:
@@ -10,18 +8,15 @@ private:
 	SOCKET svSocket;
 	sockaddr_in playerAddress[2];
 
-	int noOfPlayers;
+	int numUsers, seq1, seq2;
 	int playerTimer[2];
-
-	short sequence0;
-	short sequence1;
 
 	int storedBallVecX, storedBallVecY;
 	int ballVecX, ballVecY;
 	GameState state;
 
 public:
-	inline Server(): active(false), svSocket(INVALID_SOCKET) { }
+	inline Server() : active(false), svSocket(INVALID_SOCKET) { }
 	int init(uint16_t port);
 	int update();
 	void stop();
